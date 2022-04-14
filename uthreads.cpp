@@ -177,26 +177,30 @@ int uthread_spawn (thread_entry_point entry_point)
 int uthread_terminate (int tid)
 {
   sig_block();
-  if (tid == 0){
+  if (tid == MAIN_TID){
     for (const auto &thread : id_to_thread_map){
       delete thread.second;
     }
     id_to_thread_map.clear();
     while(!thread_queue.empty()) {thread_queue.pop();}
+    std::cout << "reached here" << std::endl;
     sig_unblock();  // should this be here?
     exit(RETURN_SUCCESS);
   }
-  if (id_not_found(tid)) {
+  else if (id_not_found(tid)) {
+      std::cout << "reached there" << std::endl;
     sig_unblock();
     return RETURN_ERROR;
   }
   else{
-    delete id_to_thread_map[tid];
+    Thread *thread_to_delete = id_to_thread_map[tid];
     id_to_thread_map.erase(tid);
-      delete_from_queue(tid);
+    delete thread_to_delete;
+    delete_from_queue(tid);
     }
   sig_unblock();
   return RETURN_SUCCESS;
+
 }
 
 // FIXED
@@ -268,7 +272,6 @@ int uthread_resume (int tid)
       return RETURN_SUCCESS;
     }
   }
-
 }
 
 int uthread_sleep (int num_quantums)
@@ -312,7 +315,9 @@ int uthread_get_total_quantums ()
 int uthread_get_quantums (int tid)
 {
   if (id_not_found(tid)) {return RETURN_ERROR;}
-  return id_to_thread_map[tid]->get_quantums_ran();
+  if (id_to_thread_map[tid] != nullptr){
+      return id_to_thread_map[tid]->get_quantums_ran();
+  }
+  std::cerr << "reached some error" << std::endl;
+  return RETURN_ERROR;
 }
-
-
