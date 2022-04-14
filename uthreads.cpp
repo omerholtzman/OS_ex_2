@@ -72,27 +72,18 @@ bool id_not_found(int tid){
 
 void change_function(int sig){
   sig_block();
-  int ret_val = id_to_thread_map[thread_queue.front()]->save_thread_frame();
-  if (sig == TRUE){
-    std::cout << "got to change function here" << std::endl;
-  }
+  id_to_thread_map[thread_queue.front()]->save_thread_frame();
   // move the last thread in queue to ready if he is running
   if (id_to_thread_map[thread_queue.front()]->get_state() == RUNNING){
     id_to_thread_map[thread_queue.front()]->set_state(READY);
     thread_queue.push(thread_queue.front());
     thread_queue.pop();
   }
-  if (sig == TRUE){
-      std::cout << "got " << std::endl;
-    }
   // finds the first ready thread
   while(id_to_thread_map[thread_queue.front()]->get_state() != READY){
       thread_queue.push(thread_queue.front());
       thread_queue.pop();
   }
-  if (sig == TRUE){
-      std::cout << "after second got" << std::endl;
-    }
   update_sleeping_quantums ();
   sig_unblock();
   run_thread(thread_queue.front());
