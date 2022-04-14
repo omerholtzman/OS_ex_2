@@ -1,0 +1,51 @@
+
+
+
+1. Answer:
+Example of user-level treads use:
+A web server that has many clients. each clients has his requests and the
+different processes can synchronize their activity without us implementing the
+synchronization.
+The web server can open as many user-level threads as he likes (There can be
+many clients).
+The overhead of user-level threads is low - we can easily switch between them,
+create them and close them.
+
+2. Answer:
+The Advantages of creating new processes:
+* Processes are more protected one from the another. They talk to each other
+through the OS. (protected in case of data)
+* (Against user-level threads: ) if one thread is blocked all other user-level
+threads are blocked too.
+
+The Disadvantages of creating new processes:
+* Processes has high overhead -> creation, termination and switching between
+threads is way slower.
+* Threads can communicate easily -> sharing data is easier.
+
+3. Answer:
+-> user input:
+interrupt caused by us typing down on the keyboard.
+The interrupt is handled by the OS. and sends a TERM signal to the process.
+
+(a step in the middle -> there should be a signal to the displaying shell to
+show the typed letters. The process is handles the signal)
+
+-> Termination signal: (command execution)
+signal that is sent by the OS to the shotwell's process.
+some interrupt is sent back to our CPU.
+
+-> CPU handles the interrupt
+
+-> CPU sends signal to the display
+the display shell has signal handler which handles the signal and displays
+"Terminated".
+
+4. Answer:
+Virtual time -> the time takes to the CPU to execute a mission
+Real time -> the time that takes to execute the mission plus the interrupts
+that comes when the mission is executed.
+
+5. Answer:
+sigsetjmp -> saves the current location, CPU state and signal mask
+siglongjmp -> restores the saved location, state of the CPU and signal mask
