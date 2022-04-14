@@ -4,7 +4,7 @@
 #include "uthreads.h"
 #include "thread.h"
 #include <sys/time.h>
-#include <setjmp.h>
+#include <signal.h>
 
 
 #ifdef __x86_64__
@@ -64,7 +64,7 @@ Thread::Thread (int tid, thread_entry_point entry_point)
   sigsetjmp(this->jump_buffer, TRUE);
   (this->jump_buffer->__jmpbuf)[JB_SP] = translate_address(sp);
   (this->jump_buffer->__jmpbuf)[JB_PC] = translate_address(pc);
-  sigemptyset(&this->jump_buffer->__saved_mask);
+  sigemptyset(&(this->jump_buffer->__saved_mask));
 }
 
 
