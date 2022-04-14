@@ -85,7 +85,7 @@ void Thread::block_thread ()
 
 Thread::~Thread ()
 {
-  delete this->stack;
+  delete[] this->stack;
 }
 
 int Thread::save_thread_frame ()

@@ -19,6 +19,7 @@
 #define BLOCKING_MAIN_ERROR "Tried blocking the main thread. That is an error."
 #define SIGACTION_ERROR "Error: sigaction error."
 #define ITIMER_ERROR "Error: an error was raised setting the itimer."
+#define SYSCALL_ERROR "Error: sys call failed."
 
 
 static std::map<int, Thread*> id_to_thread_map = std::map<int, Thread*>();
@@ -35,18 +36,24 @@ void delete_from_queue (int tid);
 void update_sleeping_quantums ();
 
 void sig_block(){
-  sigprocmask(SIG_BLOCK, &set ,nullptr);
+  if (sigprocmask(SIG_BLOCK, &set ,nullptr) == -1){
+    std::cerr << SYSCALL_ERROR << std::endl;
+    exit(EXIT_FAILURE);
+  }
+  std::cout << "started block" << std::endl;
 }
 
 void sig_unblock(){
-  sigprocmask(SIG_UNBLOCK, &set, nullptr);
+  if (sigprocmask(SIG_UNBLOCK, &set, nullptr) == -1){
+      std::cerr << SYSCALL_ERROR << std::endl;
+      exit(EXIT_FAILURE);
+  }
+  std::cout << "finished block" << std::endl;
 }
 
 // TODO: what is considered as a "quantum" starts? calling get_tid increases
 //  the quantum??
 
-// TODO: look at tirgul 3 - pages :39 - 43
-// TODO: when terminating main thread everything else should be blocked!
 
 // FIXED
 void run_thread(int thread_number){
@@ -136,8 +143,8 @@ int uthread_init (int quantum_usecs)
 //
 //    }
   Thread *main_thread = new Thread (MAIN_TID, nullptr);
-  id_to_thread_map.insert({main_thread->get_tid(), main_thread});
-  thread_queue.push(main_thread->get_tid());
+  id_to_thread_map.insert({MAIN_TID, main_thread});
+  thread_queue.push(MAIN_TID);
 
   return RETURN_SUCCESS;
 }
