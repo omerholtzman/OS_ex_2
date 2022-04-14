@@ -64,7 +64,9 @@ Thread::Thread (int tid, thread_entry_point entry_point)
   sigsetjmp(this->jump_buffer, TRUE);
   (this->jump_buffer->__jmpbuf)[JB_SP] = translate_address(sp);
   (this->jump_buffer->__jmpbuf)[JB_PC] = translate_address(pc);
-  sigemptyset(&(this->jump_buffer->__saved_mask));
+  if(sigemptyset(&(this->jump_buffer->__saved_mask)) == -1){
+    std::cerr << "SYSCALL ERROR" << std::endl;
+  }
 }
 
 

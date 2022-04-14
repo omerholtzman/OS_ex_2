@@ -15,7 +15,7 @@ class Thread {
   int quantums_ran;
   int tid;
   STATE state;
-  sigjmp_buf *jump_buffer;
+  sigjmp_buf jump_buffer;
   STATE end_of_sleeping_state;
   char *stack;
 

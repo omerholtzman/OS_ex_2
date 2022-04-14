@@ -71,30 +71,31 @@ bool id_not_found(int tid){
 }
 
 void change_function(int sig){
+  sig_block();
   int ret_val = id_to_thread_map[thread_queue.front()]->save_thread_frame();
-
+  if (sig == TRUE){
+    std::cout << "got to change function here" << std::endl;
+  }
   // move the last thread in queue to ready if he is running
   if (id_to_thread_map[thread_queue.front()]->get_state() == RUNNING){
     id_to_thread_map[thread_queue.front()]->set_state(READY);
+    thread_queue.push(thread_queue.front());
+    thread_queue.pop();
   }
-  thread_queue.push(thread_queue.front());
-  thread_queue.pop();
-
+  if (sig == TRUE){
+      std::cout << "got " << std::endl;
+    }
   // finds the first ready thread
   while(id_to_thread_map[thread_queue.front()]->get_state() != READY){
       thread_queue.push(thread_queue.front());
       thread_queue.pop();
   }
-
-  update_sleeping_quantums ();
-
-  bool did_just_save_bookmark = ret_val == 0;
-  // bool did_jump_from_another_thread = ret_val != 0;
-  if (did_just_save_bookmark)
-    {
-      // changes it to running and runs the function
-      run_thread(thread_queue.front());
+  if (sig == TRUE){
+      std::cout << "after second got" << std::endl;
     }
+  update_sleeping_quantums ();
+  sig_unblock();
+  run_thread(thread_queue.front());
 }
 
 void update_sleeping_quantums ()
@@ -183,12 +184,10 @@ int uthread_terminate (int tid)
     }
     id_to_thread_map.clear();
     while(!thread_queue.empty()) {thread_queue.pop();}
-    std::cout << "reached here" << std::endl;
     sig_unblock();  // should this be here?
     exit(RETURN_SUCCESS);
   }
   else if (id_not_found(tid)) {
-      std::cout << "reached there" << std::endl;
     sig_unblock();
     return RETURN_ERROR;
   }
@@ -197,7 +196,8 @@ int uthread_terminate (int tid)
     id_to_thread_map.erase(tid);
     delete thread_to_delete;
     delete_from_queue(tid);
-    }
+    change_function(TRUE);
+  }
   sig_unblock();
   return RETURN_SUCCESS;
 
@@ -241,7 +241,7 @@ int uthread_block (int tid)
         return RETURN_SUCCESS;
       case RUNNING:
         id_to_thread_map[tid]->block_thread();
-        // TODO: throuwing the signal alarm?
+        change_function(TRUE);
         sig_unblock();
         return RETURN_SUCCESS;
       default:

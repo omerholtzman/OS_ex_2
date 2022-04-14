@@ -394,7 +394,7 @@ int func_switch_thread(){
     }//
   flag =1;
   printf("thread num %d = %d\n", 1, uthread_get_quantums(1));
-  uthread_terminate(uthread_get_tid());
+//  uthread_terminate(uthread_get_tid());
   return 0;
 }
 /**
@@ -427,13 +427,13 @@ int test_switch_thread(){
 }
 int main(int argc ,char *argv[]){
     test_switch_thread();
-    test_switch_4_threads();
-    test_regular_block_resume();
-    test_sleep();
-    test_block_and_sleep();
-    test_sleep_and_block();
-    test_thread_block_itself();
-    test_thread_terminate_itself();
+//    test_switch_4_threads();
+//    test_regular_block_resume();
+//    test_sleep();
+//    test_block_and_sleep();
+//    test_sleep_and_block();
+//    test_thread_block_itself();
+//    test_thread_terminate_itself();
   return 0;
 }
 
