@@ -20,6 +20,7 @@
 #define SIGACTION_ERROR "Error: sigaction error."
 #define ITIMER_ERROR "Error: an error was raised setting the itimer."
 #define SYSCALL_ERROR "Error: sys call failed."
+#define QUANTUM_SEC_ERROR "Error: Quantum usec must be positive number!"
 
 
 static std::map<int, Thread*> id_to_thread_map = std::map<int, Thread*>();
@@ -40,7 +41,6 @@ void sig_block(){
     std::cerr << SYSCALL_ERROR << std::endl;
     exit(EXIT_FAILURE);
   }
-  std::cout << "started block" << std::endl;
 }
 
 void sig_unblock(){
@@ -48,11 +48,7 @@ void sig_unblock(){
       std::cerr << SYSCALL_ERROR << std::endl;
       exit(EXIT_FAILURE);
   }
-  std::cout << "finished block" << std::endl;
 }
-
-// TODO: what is considered as a "quantum" starts? calling get_tid increases
-//  the quantum??
 
 
 // FIXED
@@ -69,6 +65,23 @@ bool id_not_found(int tid){
     }
   return false;
 }
+
+//void change_check(int sig){
+//  id_to_thread_map[thread_queue.front()]->save_thread_frame();
+//
+//  if (id_to_thread_map[thread_queue.front()]->get_state() == RUNNING){
+//      id_to_thread_map[thread_queue.front()]->set_state(READY);
+//      thread_queue.push(thread_queue.front());
+//      thread_queue.pop();
+//    }
+//
+//  while(id_to_thread_map[thread_queue.front()]->get_state() != READY){
+//      thread_queue.push(thread_queue.front());
+//      thread_queue.pop();
+//    }
+//  update_sleeping_quantums ();
+//  run_thread(thread_queue.front());
+//}
 
 void change_function(int sig){
   sig_block();
@@ -103,7 +116,10 @@ void update_sleeping_quantums ()
 
 int uthread_init (int quantum_usecs)
 {
-
+  if (quantum_usecs <= 0){
+    std::cerr << QUANTUM_SEC_ERROR << std::endl;
+    return RETURN_ERROR;
+  }
   global_quantum_usecs = quantum_usecs;
   quantums_passed = 1;
 
@@ -137,7 +153,8 @@ int uthread_init (int quantum_usecs)
   Thread *main_thread = new Thread (MAIN_TID, nullptr);
   id_to_thread_map.insert({MAIN_TID, main_thread});
   thread_queue.push(MAIN_TID);
-
+  main_thread->set_state(RUNNING);
+  main_thread->set_quantums_ran(1);
   return RETURN_SUCCESS;
 }
 
@@ -185,9 +202,12 @@ int uthread_terminate (int tid)
   else{
     Thread *thread_to_delete = id_to_thread_map[tid];
     id_to_thread_map.erase(tid);
+    bool is_running = thread_to_delete->get_state() == RUNNING;
     delete thread_to_delete;
     delete_from_queue(tid);
-    change_function(TRUE);
+    if (is_running){
+        change_function(TRUE);
+    }
   }
   sig_unblock();
   return RETURN_SUCCESS;
@@ -241,6 +261,18 @@ int uthread_block (int tid)
     }
 }
 
+
+void push_to_end(int tid){
+  int size = (int) thread_queue.size();
+  for (int i = 0; i < size; i++){
+    if (thread_queue.front() != tid){
+        thread_queue.push(thread_queue.front());
+    }
+      thread_queue.pop();
+  }
+  thread_queue.push(tid);
+}
+
 // FIXED
 int uthread_resume (int tid)
 {
@@ -258,6 +290,7 @@ int uthread_resume (int tid)
       }
       else{
           id_to_thread_map[tid]->set_state(READY);
+          push_to_end(tid);
       }
       sig_unblock();
       return RETURN_SUCCESS;
@@ -286,11 +319,13 @@ int uthread_sleep (int num_quantums)
 // FIXED
 int uthread_get_tid ()
 {
-  int thread_number = 1;
+  int thread_number = 0;
   while (thread_number <= MAX_THREAD_NUM){
-      if (id_to_thread_map[thread_number]->get_state() == RUNNING){
-          return thread_number;
-        }
+    if (!(id_to_thread_map.find(thread_number) == id_to_thread_map.end())){
+        if (id_to_thread_map[thread_number]->get_state() == RUNNING){
+            return thread_number;
+          }
+    }
       thread_number++;
     }
   return RETURN_ERROR;
