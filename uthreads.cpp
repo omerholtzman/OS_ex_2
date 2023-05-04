@@ -11,6 +11,7 @@
 #define RETURN_SUCCESS 0
 #define MAIN_TID 0
 #define STARTING_RUNNING_QUANTUMS 0
+#define BLOCK_RUNNING -101
 
 #define WRONG_ID_TERMINATING_THREAD_ERROR "Error: tried to terminate ID doesn't exist"
 #define REACHED_MAX_THREAD_NUM_ERROR "Error: reached max thread number"
@@ -21,6 +22,8 @@
 #define ITIMER_ERROR "Error: an error was raised setting the itimer."
 #define SYSCALL_ERROR "Error: sys call failed."
 #define QUANTUM_SEC_ERROR "Error: Quantum usec must be positive number!"
+#define UNINITIALIZED_THREAD_ERROR "Error: Thread was not initialized"
+#define UNBLOCK_SLEEPING_THREAD_ERROR "Error: Tried to unblock sleeping thread!"
 
 
 static std::map<int, Thread*> id_to_thread_map = std::map<int, Thread*>();
@@ -51,13 +54,11 @@ void sig_unblock(){
 }
 
 
-// FIXED
 void run_thread(int thread_number){
   quantums_passed++;
   id_to_thread_map[thread_number]->run_thread();
 }
 
-// FIXED
 bool id_not_found(int tid){
   if (id_to_thread_map.find(tid) == id_to_thread_map.end()){
       std::cerr << NO_SUCH_ID_ERROR << tid << std::endl;
@@ -66,26 +67,11 @@ bool id_not_found(int tid){
   return false;
 }
 
-//void change_check(int sig){
-//  id_to_thread_map[thread_queue.front()]->save_thread_frame();
-//
-//  if (id_to_thread_map[thread_queue.front()]->get_state() == RUNNING){
-//      id_to_thread_map[thread_queue.front()]->set_state(READY);
-//      thread_queue.push(thread_queue.front());
-//      thread_queue.pop();
-//    }
-//
-//  while(id_to_thread_map[thread_queue.front()]->get_state() != READY){
-//      thread_queue.push(thread_queue.front());
-//      thread_queue.pop();
-//    }
-//  update_sleeping_quantums ();
-//  run_thread(thread_queue.front());
-//}
-
 void change_function(int sig){
   sig_block();
-  id_to_thread_map[thread_queue.front()]->save_thread_frame();
+  if (sig != TRUE){
+      id_to_thread_map[thread_queue.front()]->save_thread_frame();
+  }
   // move the last thread in queue to ready if he is running
   if (id_to_thread_map[thread_queue.front()]->get_state() == RUNNING){
     id_to_thread_map[thread_queue.front()]->set_state(READY);
@@ -106,10 +92,13 @@ void update_sleeping_quantums ()
 {
   for (const auto &tid : sleeping_treads_map){
     sleeping_treads_map[tid.first]--;
-    if (tid.second == 0){
-      if (id_to_thread_map[tid.first]->get_end_of_sleeping() != BLOCKED){
-          id_to_thread_map[tid.first]->set_state(READY);
-      }
+    if (id_to_thread_map.find(tid.first) != id_to_thread_map.end() && tid.second == 0){
+        if (id_to_thread_map[tid.first]->get_end_of_sleeping() != BLOCKED){
+            id_to_thread_map[tid.first]->set_state(READY);
+          }
+        else{
+            id_to_thread_map[tid.first]->set_end_of_sleeping(READY);
+        }
     }
   }
 }
@@ -158,7 +147,6 @@ int uthread_init (int quantum_usecs)
   return RETURN_SUCCESS;
 }
 
-// FIXED
 int uthread_spawn (thread_entry_point entry_point)
 {
   sig_block();
@@ -182,7 +170,6 @@ int uthread_spawn (thread_entry_point entry_point)
   return RETURN_ERROR;
 }
 
-// FIXED
 int uthread_terminate (int tid)
 {
   sig_block();
@@ -191,6 +178,7 @@ int uthread_terminate (int tid)
       delete thread.second;
     }
     id_to_thread_map.clear();
+    sleeping_treads_map.clear();
     while(!thread_queue.empty()) {thread_queue.pop();}
     sig_unblock();  // should this be here?
     exit(RETURN_SUCCESS);
@@ -201,11 +189,18 @@ int uthread_terminate (int tid)
   }
   else{
     Thread *thread_to_delete = id_to_thread_map[tid];
+      bool is_running = false;
+      if (thread_to_delete != nullptr){
+          is_running = thread_to_delete->get_state() == RUNNING;
+          delete thread_to_delete;
+        }
     id_to_thread_map.erase(tid);
-    bool is_running = thread_to_delete->get_state() == RUNNING;
-    delete thread_to_delete;
+    if (sleeping_treads_map.find(tid) != sleeping_treads_map.end()){
+        sleeping_treads_map.erase(tid);
+    }
     delete_from_queue(tid);
     if (is_running){
+        sig_unblock();
         change_function(TRUE);
     }
   }
@@ -214,7 +209,6 @@ int uthread_terminate (int tid)
 
 }
 
-// FIXED
 void delete_from_queue (int tid)
 {
   std::queue<int> new_queue;
@@ -252,7 +246,7 @@ int uthread_block (int tid)
         return RETURN_SUCCESS;
       case RUNNING:
         id_to_thread_map[tid]->block_thread();
-        change_function(TRUE);
+        change_function(BLOCK_RUNNING);
         sig_unblock();
         return RETURN_SUCCESS;
       default:
@@ -273,29 +267,30 @@ void push_to_end(int tid){
   thread_queue.push(tid);
 }
 
-// FIXED
 int uthread_resume (int tid)
 {
   sig_block();
-  if (id_not_found(tid)) {return RETURN_ERROR;}
-  else{
-    if (id_to_thread_map[tid]->get_state() == READY || id_to_thread_map[tid]
-    ->get_state() == RUNNING){
-      sig_unblock();
-      return RETURN_SUCCESS;
-    }
-    else{
+  if (id_not_found(tid)) {
+    sig_unblock();
+    return RETURN_ERROR;
+  }
+  if (id_to_thread_map[tid]->get_state() == BLOCKED){
+      // thread is blocked
       if (sleeping_treads_map.find(tid) != sleeping_treads_map.end()){
           id_to_thread_map[tid]->set_end_of_sleeping(READY);
-      }
+        }
       else{
           id_to_thread_map[tid]->set_state(READY);
           push_to_end(tid);
       }
-      sig_unblock();
-      return RETURN_SUCCESS;
-    }
   }
+  else if (sleeping_treads_map.find(tid) != sleeping_treads_map.end()){
+      std::cerr << UNBLOCK_SLEEPING_THREAD_ERROR << std::endl;
+      sig_unblock();
+      return RETURN_ERROR;
+  }
+  sig_unblock();
+  return RETURN_SUCCESS;
 }
 
 int uthread_sleep (int num_quantums)
@@ -316,7 +311,6 @@ int uthread_sleep (int num_quantums)
   return RETURN_SUCCESS;
 }
 
-// FIXED
 int uthread_get_tid ()
 {
   int thread_number = 0;
@@ -331,19 +325,27 @@ int uthread_get_tid ()
   return RETURN_ERROR;
 }
 
-// FIXED
 int uthread_get_total_quantums ()
 {
   return quantums_passed;
 }
 
-// FIXED
 int uthread_get_quantums (int tid)
 {
-  if (id_not_found(tid)) {return RETURN_ERROR;}
-  if (id_to_thread_map[tid] != nullptr){
-      return id_to_thread_map[tid]->get_quantums_ran();
+  sig_block();
+  if (id_not_found(tid)) {
+      sig_unblock();
+      return RETURN_ERROR;
   }
-  std::cerr << "reached some error" << std::endl;
+  if (id_to_thread_map.find(tid) != id_to_thread_map.end()){
+      if (id_to_thread_map[tid] != nullptr){
+        sig_unblock();
+          return id_to_thread_map[tid]->get_quantums_ran();
+        }
+      std::cerr << UNINITIALIZED_THREAD_ERROR << std::endl;
+      sig_unblock();
+      return RETURN_ERROR;
+  }
+  sig_unblock();
   return RETURN_ERROR;
 }

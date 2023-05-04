@@ -1,4 +1,17 @@
+yali.ekstein, omer.holtzman
+Yali Ekstein (212537807), Omer Holtzman (212422794)
+EX: 2
 
+FILES:
+thread.cpp -- thread class for managing single thread data and actions.
+thread.h -- header file for the class above ^.
+uthreads.cpp -- implementation of the library.
+README -- this file - answers to theoretical part.
+
+REMARKS:
+We just wanted you to know that we worked REALLY hard about this exercise.
+Including debbuging in Passover cause thing went bad. But now we are better.
+sorry for the late submission.
 
 
 1. Answer:

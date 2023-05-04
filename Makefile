@@ -2,29 +2,26 @@ CC=g++
 CXX=g++
 RANLIB=ranlib
 
-LIBSRC=main.cpp uthreads.cpp thread.cpp
+LIBSRC=uthreads.cpp thread.cpp
 LIBOBJ=$(LIBSRC:.cpp=.o)
 
 INCS=-I.
 CFLAGS = -Wall -std=c++11 -g $(INCS)
 CXXFLAGS = -Wall -std=c++11 -g $(INCS)
 
-UTHREADSLIB = uthreads.a
+UTHREADSLIB = libuthreads.a
 TARGETS = $(UTHREADSLIB)
 
 TAR=tar
 TARFLAGS=-cvf
 TARNAME=ex2.tar
-TARSRCS=$(LIBSRC) Makefile README
+TARSRCS=$(LIBSRC) Makefile README thread.h
 
 all: $(TARGETS)
 
 $(TARGETS): $(LIBOBJ)
 	$(AR) $(ARFLAGS) $@ $^
 	$(RANLIB) $@
-
-main:
-	$(CXX) -Wall -g -o main.out main.cpp uthreads.cpp thread.cpp
 
 clean:
 	$(RM) $(TARGETS) $(UTHREADSLIB) $(OBJ) $(LIBOBJ) *~ *core
